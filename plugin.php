@@ -1,7 +1,7 @@
 <?php
 /*
-Plugin Name: Time Zone Configuration
-Plugin URI: https://yourls.org/
+Plugin Name: Time Zones ⏰
+Plugin URI: https://github.com/YOURLS/timezones
 Description: Tell YOURLS what timezone you are in
 Version: 1.0
 Author: YOURLS contributors
@@ -13,35 +13,22 @@ if( !defined( 'YOURLS_ABSPATH' ) ) die();
 
 /* TODO
  *
- * - register a plugin page
- *      - on this page, display :
- *          - dropdown to select timezone
- *          - maybe something to let the user choose how they want to display dates (in /admin and on stat pages)
- *      - save that into options :
- *          - timezone
- *          - time_format
- *
- * - register filters for core functions to hook in
- *
  * - add some explanation that if people activate this plugin and have YOURLS_HOURS_OFFSET defined,
  *   YOURLS_HOURS_OFFSET will be ignored
- *
- * - what else ?
  */
 
 // Register our plugin admin page
 yourls_add_action( 'plugins_loaded', 'yourls_time_zone_config' );
-
 function yourls_time_zone_config() {
     yourls_register_plugin_page( 'time_zone_config', 'Time Zone Configuration', 'yourls_time_zone_config_do_page' );
     // parameters: page slug, page title, and function that will display the page itself
 }
 
+//
 yourls_add_filter( 'get_timezoned_offset', 'yourls_time_zone_config_get_offset' );
-
 function yourls_time_zone_config_get_offset() {
 
-    $time_zone = yourls_get_option( 'time_zone' );
+    $time_zone = yourls_get_option( 'timezone' );
 
     // If YOURLS_HOURS_OFFSET is not set and time_zone isn't set either
     if ( !is_string($time_zone) ) {
@@ -65,14 +52,13 @@ function yourls_time_zone_config_do_page() {
         yourls_time_zone_config_update_timezone();
     }
 
-    // Get current time zone from database
-    $current_time_zone = yourls_get_option( 'time_zone' );
-
-    // Get current date format from database
-    $current_date_format = yourls_get_option( 'date_format' );
-
-    // Get current time format from database
-    $current_time_format = yourls_get_option( 'time_format' );
+    // Get options
+    $options = (array)yourls_get_option( 'timezone' );
+    $user_time_zone          = yourls_time_zone_get_value($options,'time_zone');
+    $user_date_format        = yourls_time_zone_get_value($options,'date_format');
+    $user_date_format_custom = yourls_time_zone_get_value($options,'date_format_custom');
+    $user_time_format        = yourls_time_zone_get_value($options,'time_format');
+    $user_time_format_custom = yourls_time_zone_get_value($options,'time_format_custom');
 
     // Create nonce
     $nonce = yourls_create_nonce( 'time_zone_config' );
@@ -138,65 +124,87 @@ function yourls_time_zone_config_do_page() {
     foreach($timezones as $region => $list) {
         print '<optgroup label="' . $region . '">' . "\n";
         foreach($list as $timezone => $name) {
-            print '<option value="' . $timezone . '" ' . (($timezone == $current_time_zone) ? "selected":"") . '>' . $name . '</option>' . "\n";
+            print '<option value="' . $timezone . '" ' . (($timezone == $user_time_zone) ? "selected='selected'":"") . '>' . $name . '</option>' . "\n";
         }
         print '<optgroup>' . "\n";
     }
     print '</select>';
 
-    print '<br><br><label>Date format:</label><br>';
-    print '<input type="radio" name="date_format" value="j F Y"' . (($current_date_format== 'j F Y') ?  "checked" : "") . '>';
-    print ' <label>13 April 2020</label><br>';
-    print '<input type="radio" name="date_format" value="F j, Y"' . (($current_date_format== 'F j, Y') ?  "checked" : "") . '>';
-    print ' <label>April 13, 2020</label><br>';
-    print '<input type="radio" name="date_format" value="d/m/Y"' . (($current_date_format== 'd/m/Y') ?  "checked" : "") . '>';
-    print ' <label>13/04/2020</label><br>';
-    print '<input type="radio" name="date_format" value="m/d/Y"' . (($current_date_format== 'm/d/Y') ?  "checked" : "") . '>';
-    print ' <label>04/13/2020</label><br>';
-    print '<input type="radio" name="date_format" value="Y/m/d"' . (($current_date_format== 'Y/m/d') ?  "checked" : "") . '>';
-    print ' <label>2020/04/13</label><br>';
+    $choices = array(
+        'j F Y',  // 13 April 2020
+        'F j, Y', // May 10, 2020
+        'd/m/Y',  // 20/10/2020
+        'm/d/Y',  // 10/20/2020
+        'Y/m/d',  // 2020/10/20
+        );
+    yourls_time_zone_format_radio( 'Date Format', 'date_format', $choices, $user_date_format, $user_date_format_custom );
 
-    print '<br>';
-    print '<label>Time format:</label><br>';
-    print '<input type="radio" name="time_format" value="H:i"' . (($current_time_format== 'H:i') ?  "checked" : "") . '>';
-    print ' <label>21:23</label><br>';
-    print '<input type="radio" name="time_format" value="g:i a"' . (($current_time_format== 'g:i a') ?  "checked" : "") . '>';
-    print ' <label>9:23 pm</label><br>';
-    print '<input type="radio" name="time_format" value="g:i A"' . (($current_time_format== 'g:i A') ?  "checked" : "") . '>';
-    print ' <label>9:23 PM</label><br>';
+    $choices = array(
+        'H:i',    // 21:23
+        'g:i a',  // 9:23 pm
+        'g:i A',  // 9:23 PM
+        );
+    yourls_time_zone_format_radio( 'Time Format', 'time_format', $choices, $user_time_format, $user_time_format_custom );
 
     print '<p><input type="submit" value="Update configuration" /></p>';
     print '</form>';
 
+    // auto select radio when custom input field is focused
+    print <<<JS
+    <script>
+    $('.custom :input').focusin(function() {
+        $(this).prev().click();
+    });
+    </script>
+JS;
+
 }
+
+/**
+ * Output radio button list
+ *
+ * @param  string $title       Dropdown title
+ * @param  string $input_name  Dropdown 'radio' name
+ * @param  array  $formats     List of available choices, to which 'custom' will be appended
+ * @param  string $selected    Checked radio value
+ * @param  string $custom      Custom format value
+ */
+function yourls_time_zone_format_radio( $title, $input_name, $formats, $selected, $custom ) {
+    print "<h3>$title:</h3>";
+
+    foreach ($formats as $format) {
+        $checked = ( $format === $selected ) ? 'checked="checked"' : '' ;
+        print "<p><label><input type='radio' name='$input_name' value='$format' $checked >";
+        print date($format);
+        print "</label></p>\n";
+    }
+
+    $checked = ( 'custom' === $selected ) ? 'checked="checked"' : '' ;
+    print "<label class='custom'><input type='radio' id='${input_name}_custom' name='$input_name' value='custom' $checked >
+           Custom: <input type='text' id='${input_name}_custom_value' name='${input_name}_custom_value' value='$custom' />
+           </label>\n";
+
+}
+
+/**
+ * Get (string)key from array, or return false if not defined
+ *
+ * @param  array  $array Array
+ * @param  string $key   Key
+ * @return string        Value of (string)$array[$key], or false
+ */
+function yourls_time_zone_get_value( $array, $key ) {
+    return isset ( $array[$key] ) ? (string)($array[$key]) : false ;
+}
+
 
 // Update time zone in database
 function yourls_time_zone_config_update_timezone() {
-    $in_time_zone   = $_POST['time_zone'];
-    $in_date_format = $_POST['date_format'];
-    $in_time_format = $_POST['time_format'];
-
-    if( $in_time_zone ) {
-        // Validate input on being a string
-        $in_time_zone = strval( $in_time_zone);
-
-        // Update value in database
-        yourls_update_option( 'time_zone', $in_time_zone );
-    }
-
-    if( $in_date_format ) {
-        // Validate input on being a string
-        $in_date_format = strval( $in_date_format);
-
-        // Update value in database
-        yourls_update_option( 'date_format', $in_date_format );
-    }
-
-    if( $in_time_format ) {
-        // Validate input on being a string
-        $in_time_format = strval( $in_time_format);
-
-        // Update value in database
-        yourls_update_option( 'time_format', $in_time_format );
-    }
+    yourls_update_option( 'timezone', array(
+        'time_zone'          => yourls_time_zone_get_value($_POST, 'time_zone'),
+        'date_format'        => yourls_time_zone_get_value($_POST, 'date_format'),
+        'date_format_custom' => yourls_time_zone_get_value($_POST, 'date_format_custom_value'),
+        'time_format'        => yourls_time_zone_get_value($_POST, 'time_format'),
+        'time_format_custom' => yourls_time_zone_get_value($_POST, 'time_format_custom_value'),
+    ));
 }
