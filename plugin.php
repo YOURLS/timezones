@@ -18,172 +18,63 @@ if( !defined( 'YOURLS_ABSPATH' ) ) die();
  */
 
 // Register our plugin admin page
-yourls_add_action( 'plugins_loaded', 'yourls_time_zone_config' );
-function yourls_time_zone_config() {
-    yourls_register_plugin_page( 'time_zone_config', 'Time Zone Configuration', 'yourls_time_zone_config_do_page' );
-    // parameters: page slug, page title, and function that will display the page itself
+yourls_add_action( 'plugins_loaded', 'yourls_tzp_config' );
+function yourls_tzp_config() {
+    if( yourls_is_admin() ) {
+        require_once __DIR__ . '/admin.php';
+    }
+    yourls_register_plugin_page( 'time_zone_config', 'Time Zone Configuration', 'yourls_tzp_admin_page' );
 }
 
-//
-yourls_add_filter( 'get_timezoned_offset', 'yourls_time_zone_config_get_offset' );
-function yourls_time_zone_config_get_offset() {
-
-    $time_zone = yourls_get_option( 'timezone' );
-
-    // If YOURLS_HOURS_OFFSET is not set and time_zone isn't set either
-    if ( !is_string($time_zone) ) {
-        return 0;
-    }
-
-    $datetimezone = new DateTimeZone($time_zone);
-
-    // Compare current time zone time vs current GMT time to get the offset
-    return $datetimezone->getOffset(new DateTime("now", new DateTimeZone("GMT"))) / 3600;
-
+//yourls_add_filter( 'get_time_offset', 'yourls_tzp_get_time_offset' );
+function yourls_tzp_get_time_offset() {
+    return yourls_tzp_timezoned_offset( yourls_tzp_read_options( 'time_zone' ) );
 }
 
-// Display time zone configuration page
-function yourls_time_zone_config_do_page() {
+yourls_add_filter( 'get_timestamp', 'yourls_tzp_get_timestamp' );
+function yourls_tzp_get_timestamp($timestamp_offset, $timestamp, $offset) {
+    return yourls_tzp_timezoned_time( $timestamp, yourls_tzp_read_options( 'time_zone' ) );
+}
 
-    // Check if a form was submitted
-    if( isset( $_POST['time_zone'] ) ) {
-        // Check nonce and process form
-        yourls_verify_nonce( 'time_zone_config' );
-        yourls_time_zone_config_update_timezone();
+yourls_add_filter( 'get_datetime_format', 'yourls_tzp_get_datetime_format' );
+function yourls_tzp_get_datetime_format($format) {
+    $date_format = yourls_tzp_read_options('date_format');
+    if( $date_format == 'custom' ) {
+        $date_format = yourls_tzp_read_options('date_format_custom');
     }
 
-    // Get options
-    $options = (array)yourls_get_option( 'timezone' );
-    $user_time_zone          = yourls_time_zone_get_value($options,'time_zone');
-    $user_date_format        = yourls_time_zone_get_value($options,'date_format');
-    $user_date_format_custom = yourls_time_zone_get_value($options,'date_format_custom');
-    $user_time_format        = yourls_time_zone_get_value($options,'time_format');
-    $user_time_format_custom = yourls_time_zone_get_value($options,'time_format_custom');
-
-    // Create nonce
-    $nonce = yourls_create_nonce( 'time_zone_config' );
-
-
-    // Continent list
-    $continent = array(
-        'Africa'     => DateTimeZone::AFRICA,
-        'America'    => DateTimeZone::AMERICA,
-        'Antarctica' => DateTimeZone::ANTARCTICA,
-        'Asia'       => DateTimeZone::ASIA,
-        'Atlantic'   => DateTimeZone::ATLANTIC,
-        'Europe'     => DateTimeZone::EUROPE,
-        'Indian'     => DateTimeZone::INDIAN,
-        'Pacific'    => DateTimeZone::PACIFIC,
-    );
-
-    // Timezones per continents
-    $timezones = array();
-    foreach ($continent as $name => $mask) {
-        $zones = DateTimeZone::listIdentifiers($mask);
-        foreach($zones as $timezone) {
-            // Remove region name and add a sample time
-            $timezones[$name][$timezone] = substr($timezone, strlen($name) + 1);
-            }
+    $time_format = yourls_tzp_read_options('time_format');
+    if( $time_format == 'custom' ) {
+        $time_format = yourls_tzp_read_options('time_format_custom');
     }
 
-    // Manual UTC offset
-    $offset_range = array(
-        -12,     -11.5,    -11,     -10.5,    -10,     -9.5,     -9,
-        -8.5,    -8,       -7.5,    -7,       -6.5,    -6,       -5.5,
-        -5,      -4.5,     -4,      -3.5,     -3,      -2.5,     -2,
-        -1.5,    -1,       -0.5,    0,        0.5,     1,        1.5,
-        2,       2.5,      3,       3.5,      4,       4.5,      5,
-        5.5,     5.75,     6,       6.5,      7,       7.5,      8,
-        8.5,     8.75,     9,       9.5,      10,      10.5,     11,
-        11.5,    12,       12.75,   13,       13.75,   14
-    );
-
-    foreach( $offset_range as $offset ) {
-        if ( 0 <= $offset ) {
-            $offset_name = '+' . $offset;
-        } else {
-            $offset_name = (string) $offset;
-        }
-
-        $offset_value = $offset_name;
-        $offset_name  = str_replace( array( '.25', '.5', '.75' ), array( ':15', ':30', ':45' ), $offset_name );
-        $offset_name  = 'UTC' . $offset_name;
-        $offset_value = 'UTC' . $offset_value;
-        $timezones['UTC'][$offset_value] = $offset_name;
-    }
-
-    // View
-    print '<h2>Time Zone Configuration</h2>';
-    print '<p>This plugin enables the configuration of which time zone to use when displaying dates and time.</p>';
-    print '<form method="post">';
-    print '<input type="hidden" name="nonce" value="' . $nonce . '" />';
-
-    print '<label for="time_zone">Time zone: </label><br>';
-    print '<select name="time_zone" id="time_zone">';
-    print '<option name="">Choose a time zone</option>';
-    foreach($timezones as $region => $list) {
-        print '<optgroup label="' . $region . '">' . "\n";
-        foreach($list as $timezone => $name) {
-            print '<option value="' . $timezone . '" ' . (($timezone == $user_time_zone) ? "selected='selected'":"") . '>' . $name . '</option>' . "\n";
-        }
-        print '<optgroup>' . "\n";
-    }
-    print '</select>';
-
-    $choices = array(
-        'j F Y',  // 13 April 2020
-        'F j, Y', // May 10, 2020
-        'd/m/Y',  // 20/10/2020
-        'm/d/Y',  // 10/20/2020
-        'Y/m/d',  // 2020/10/20
-        );
-    yourls_time_zone_format_radio( 'Date Format', 'date_format', $choices, $user_date_format, $user_date_format_custom );
-
-    $choices = array(
-        'H:i',    // 21:23
-        'g:i a',  // 9:23 pm
-        'g:i A',  // 9:23 PM
-        );
-    yourls_time_zone_format_radio( 'Time Format', 'time_format', $choices, $user_time_format, $user_time_format_custom );
-
-    print '<p><input type="submit" value="Update configuration" /></p>';
-    print '</form>';
-
-    // auto select radio when custom input field is focused
-    print <<<JS
-    <script>
-    $('.custom :input').focusin(function() {
-        $(this).prev().click();
-    });
-    </script>
-JS;
-
+    return "$date_format $time_format";
 }
 
 /**
- * Output radio button list
+ * Return time offset of a timezone from UTC
  *
- * @param  string $title       Dropdown title
- * @param  string $input_name  Dropdown 'radio' name
- * @param  array  $formats     List of available choices, to which 'custom' will be appended
- * @param  string $selected    Checked radio value
- * @param  string $custom      Custom format value
+ * @param  string $timezone   Optional timezone (eg "Europe/Paris"). Default is UTC
+ * @return int                Timezoned time offset
  */
-function yourls_time_zone_format_radio( $title, $input_name, $formats, $selected, $custom ) {
-    print "<h3>$title:</h3>";
+function yourls_tzp_timezoned_offset($timezone = 'UTC') {
+    $tz = new DateTimeZone($timezone);
+    return $tz->getOffset(new DateTime('now', new DateTimeZone('UTC'))) / 3600;
+}
 
-    foreach ($formats as $format) {
-        $checked = ( $format === $selected ) ? 'checked="checked"' : '' ;
-        print "<p><label><input type='radio' name='$input_name' value='$format' $checked >";
-        print date($format);
-        print "</label></p>\n";
-    }
-
-    $checked = ( 'custom' === $selected ) ? 'checked="checked"' : '' ;
-    print "<label class='custom'><input type='radio' id='${input_name}_custom' name='$input_name' value='custom' $checked >
-           Custom: <input type='text' id='${input_name}_custom_value' name='${input_name}_custom_value' value='$custom' />
-           </label>\n";
-
+/**
+ * Return timezoned and formatted time
+ *
+ * @param  int    $timestamp  Optional timestamp. If omitted, function will use time()
+ * @param  string $timezone   Optional timezone (eg "Europe/Paris"). Default is UTC
+ * @param  string $format     Optional format as what PHP's date() needs. Default it 'U' (epoch)
+ * @return string             Timezoned and formatted time
+ */
+function yourls_tzp_timezoned_time($timestamp = false, $timezone = 'UTC', $format = 'U') {
+    $timestamp = $timestamp ? $timestamp : time();
+    $time = new DateTime( null, new DateTimeZone($timezone) );
+    $time->setTimestamp($timestamp);
+    return $time->format($format);
 }
 
 /**
@@ -193,18 +84,22 @@ function yourls_time_zone_format_radio( $title, $input_name, $formats, $selected
  * @param  string $key   Key
  * @return string        Value of (string)$array[$key], or false
  */
-function yourls_time_zone_get_value( $array, $key ) {
+function yourls_tzp_get_value( $array, $key ) {
     return isset ( $array[$key] ) ? (string)($array[$key]) : false ;
 }
 
+/**
+ * Read timezone options from the DB, and return all keys or specified key
+ *
+ * @param  string $key   Key of timezone option array
+ * @return array|mixed   Array of options, or value for specified key if exists (false otherwise)
+ */
+function yourls_tzp_read_options( $key = false ) {
+    $return = (array)yourls_get_option( 'timezone' );
 
-// Update time zone in database
-function yourls_time_zone_config_update_timezone() {
-    yourls_update_option( 'timezone', array(
-        'time_zone'          => yourls_time_zone_get_value($_POST, 'time_zone'),
-        'date_format'        => yourls_time_zone_get_value($_POST, 'date_format'),
-        'date_format_custom' => yourls_time_zone_get_value($_POST, 'date_format_custom_value'),
-        'time_format'        => yourls_time_zone_get_value($_POST, 'time_format'),
-        'time_format_custom' => yourls_time_zone_get_value($_POST, 'time_format_custom_value'),
-    ));
+    if( $key !== false ) {
+        $return = array_key_exists($key, $return) ? $return[$key] : false ;
+    }
+
+    return $return;
 }
