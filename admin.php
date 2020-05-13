@@ -3,7 +3,9 @@
  * Time Zone plugin admin page
  */
 
-// Display time zone configuration page
+/**
+ * Display time zone configuration page
+ */
 function yourls_tzp_admin_page() {
 
     // Check if a form was submitted
@@ -25,17 +27,23 @@ function yourls_tzp_admin_page() {
     // Draw page
     yourls_tzp_js_css();
     print '<h2>Time Zone Configuration</h2>
-           <p>This plugin enables the configuration of which time zone to use when displaying dates and time.</p>
-           <form method="post">';
-    print '<input type="hidden" name="nonce" value="' . yourls_create_nonce( 'time_zone_config' ) . '" />';
+           <p>This plugin allows to specify a time zone and to format time/date display</p>';
 
+    if( defined('YOURLS_HOURS_OFFSET') ) {
+        print '<p><strong>Note:</strong> you have <code>YOURLS_HOURS_OFFSET</code> defined in your config.php. This plugin will override this setting.</p>';
+    }
+
+    print '<form method="post">
+           <input type="hidden" name="nonce" value="' . yourls_create_nonce( 'time_zone_config' ) . '" />';
+
+    // Time zones drop down
     print '<h3>Time zone: </h3>
            <div class="settings">
            <p>Choose a city near your location, in the same timezone as you, or a UTC time offset.</p>';
     yourls_tzp_tz_dropdown( $user_time_zone );
-    print '<p>Universal time (<code>UTC</code>) time is: <tt>' . yourls_tzp_timezoned_time( time(), 'UTC', 'Y-m-d H:i:s'  ) . '</tt></p>';
+    print '<p>Universal time (<code>UTC</code>) time is: <tt id="utc_time">' . date( 'Y-m-d H:i:s', yourls_tzp_timezoned_timestamp( time(), 'UTC' ) ). '</tt></p>';
     if($user_time_zone) {
-        print "<p>Time in $user_time_zone is: <tt>" . yourls_tzp_timezoned_time( time(), $user_time_zone, 'Y-m-d H:i:s'  ) . '</tt></p>';
+        print "<p>Time in $user_time_zone is: <tt id='local_time'>" . date( 'Y-m-d H:i:s', yourls_tzp_timezoned_timestamp( time(), $user_time_zone) ) . '</tt></p>';
     }
     print '</div>';
 
@@ -57,16 +65,21 @@ function yourls_tzp_admin_page() {
         );
     yourls_tzp_format_radio( 'Time Format', 'time_format', $choices, $user_time_zone, $user_time_format, $user_time_format_custom );
 
-    print '<p><input type="submit" class="button" value="Update configuration" /></p>';
-    print '</form>';
+    print '<p><input type="submit" class="button primary" value="Update configuration" /></p>
+           </form>
+           <p><strong>Note:</strong> custom formats need a PHP <code><a href="https://php.net/date">date()</a></code> string.';
 
 }
 
-
+/**
+ * Output CSS & JS
+ */
 function yourls_tzp_js_css() {
+    $plugin_url = yourls_plugin_url( __DIR__ );
     print <<<JSCSS
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
+    <link href='$plugin_url/assets/select2.min.css' rel='stylesheet' />
+    <script src='$plugin_url/assets/select2.min.js'></script>
+    <script src='$plugin_url/assets/php-date-formatter.min.js'></script>
     <script>
     jQuery( document ).ready(function() {
         // auto select radio when custom input field is focused
@@ -77,11 +90,41 @@ function yourls_tzp_js_css() {
         // easy selector on timezones
         $('#time_zone').select2({
             templateResult: format_region,
-            placeholder:'Choose a time zone '
-        }
+            placeholder:'Choose a time zone'
+        });
+
+        // Real time date format preview
+        $(".custom_format").on("keyup", function() {
+            format_preview($(this).attr('id'), $(this).val());
+        });
+
+        // Click a radio to change custom format accordingly
+        $('.radio_format').change(
+            function(){
+                if (this.checked) {
+                    name = $(this).attr('name');
+                    value = $(this).attr('value');
+                    $('#'+name+'_custom_value').val(value).trigger($.Event("keyup"));
+                }
+            }
         );
     })
 
+    // Real time preview of date/time format
+    function format_preview(id, value) {
+        if($('#local_time')) {
+            time = $('#local_time').text();
+        } else {
+            time = $('#utc_time').text();
+        }
+        id = id.replace('_custom_value', '');
+        fmt = new DateFormatter();
+        parse = fmt.parseDate(time, 'Y-m-d H:i:s');
+        format = fmt.formatDate(parse, value );
+        $('#tz_test_' + id).text(format);
+    }
+
+    // modify dropdown list
     function format_region(item) {
         if (!item.id) {
             return item.text;
@@ -100,7 +143,7 @@ function yourls_tzp_js_css() {
         border-bottom:1px solid #ccc;
     }
     div.settings {
-        padding-bottom:2em;
+        padding-bottom:1em;
     }
     .region{
         color:#aaa;
@@ -111,7 +154,11 @@ JSCSS;
 
 }
 
-
+/**
+ * Draw the time zone drop down
+ *
+ * @param  string $user_time_zone   Timezone to be marked as "selected" in the dropdown
+ */
 function yourls_tzp_tz_dropdown( $user_time_zone ) {
     // Continent list
     $continent = array(
@@ -130,9 +177,9 @@ function yourls_tzp_tz_dropdown( $user_time_zone ) {
     foreach ($continent as $name => $mask) {
         $zones = DateTimeZone::listIdentifiers($mask);
         foreach($zones as $timezone) {
-            // Remove region name and add a sample time
-            $timezones[$name][$timezone] = substr($timezone, strlen($name) + 1);
-            }
+            // Remove region name
+            $timezones[$name][$timezone] = substr($timezone, strlen($name) +1);
+        }
     }
 
     // Manual UTC offset
@@ -190,16 +237,16 @@ function yourls_tzp_format_radio( $title, $input_name, $formats, $tz, $selected,
 
     foreach ($formats as $format) {
         $checked = ( $format === $selected ) ? 'checked="checked"' : '' ;
-        print "<p><label><input type='radio' name='$input_name' value='$format' $checked >";
-        print yourls_date_i18n( $format, yourls_tzp_timezoned_time( time(), $tz ), true );
-        print "<br>";
-        print yourls_tzp_timezoned_time( time(), $tz, $format );
+        print "<p><label><input type='radio' class='radio_format radio_$input_name' name='$input_name' value='$format' $checked >";
+        print yourls_date_i18n( $format, yourls_tzp_timezoned_timestamp( time(), $tz ), true );
         print "</label></p>\n";
     }
 
     $checked = ( 'custom' === $selected ) ? 'checked="checked"' : '' ;
+    $preview = date( $custom, yourls_tzp_timezoned_timestamp( time(), $tz ) );
     print "<label class='custom'><input type='radio' id='${input_name}_custom' name='$input_name' value='custom' $checked >
-           Custom: <input type='text' class='text' id='${input_name}_custom_value' name='${input_name}_custom_value' value='$custom' />
+           Custom: <input type='text' class='text custom_format' id='${input_name}_custom_value' name='${input_name}_custom_value' value='$custom' />
+           <span class='tz_test' id='tz_test_$input_name'>$preview</span>
            </label>\n";
 
     print '</div>';
@@ -208,10 +255,6 @@ function yourls_tzp_format_radio( $title, $input_name, $formats, $tz, $selected,
 
 /**
  * Update time zone in database
- *
- * The array isn't sanitized here, it should be done in the caller
- *
- * @since
  */
 function yourls_tzp_config_update_settings() {
 
