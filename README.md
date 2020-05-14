@@ -6,7 +6,9 @@ Require [YOURLS](https://yourls.org) `1.7.10` and above.
 
 ## Usage
 
-![image](https://user-images.githubusercontent.com/223647/81840321-1ecb1b80-9549-11ea-9c5f-aae25bc2f944.png)
+<kbd>
+<img src="https://user-images.githubusercontent.com/223647/81840321-1ecb1b80-9549-11ea-9c5f-aae25bc2f944.png" />
+</kbd>
 
 ## Installation
 
