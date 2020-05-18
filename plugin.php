@@ -27,7 +27,7 @@ function yourls_tzp_config() {
  */
 yourls_add_filter( 'get_time_offset', 'yourls_tzp_get_time_offset' );
 function yourls_tzp_get_time_offset() {
-    return yourls_tzp_timezoned_offset( yourls_tzp_read_options( 'time_zone' ) );
+    return yourls_tzp_timezoned_offset( yourls_tzp_read_options( 'time_zone', 'UTC' ) );
 }
 
 /**
@@ -35,7 +35,7 @@ function yourls_tzp_get_time_offset() {
  */
 yourls_add_filter( 'get_timestamp', 'yourls_tzp_get_timestamp' );
 function yourls_tzp_get_timestamp($timestamp_offset, $timestamp, $offset) {
-    return yourls_tzp_timezoned_timestamp( $timestamp, yourls_tzp_read_options( 'time_zone' ) );
+    return yourls_tzp_timezoned_timestamp( $timestamp, yourls_tzp_read_options( 'time_zone', 'UTC' ) );
 }
 
 /**
@@ -51,9 +51,9 @@ function yourls_tzp_get_datetime_format() {
  */
 yourls_add_filter( 'get_date_format', 'yourls_tzp_get_date_format' );
 function yourls_tzp_get_date_format() {
-    $date_format = yourls_tzp_read_options('date_format');
+    $date_format = yourls_tzp_read_options('date_format', 'Y/m/d');
     if( $date_format == 'custom' ) {
-        $date_format = yourls_tzp_read_options('date_format_custom');
+        $date_format = yourls_tzp_read_options('date_format_custom', 'Y/m/d');
     }
     return $date_format;
 }
@@ -63,9 +63,9 @@ function yourls_tzp_get_date_format() {
  */
 yourls_add_filter( 'get_time_format', 'yourls_tzp_get_time_format' );
 function yourls_tzp_get_time_format() {
-    $time_format = yourls_tzp_read_options('time_format');
+    $time_format = yourls_tzp_read_options('time_format', 'H:i');
     if( $time_format == 'custom' ) {
-        $time_format = yourls_tzp_read_options('time_format_custom');
+        $time_format = yourls_tzp_read_options('time_format_custom', 'H:i');
     }
 
     return $time_format;
@@ -78,9 +78,6 @@ function yourls_tzp_get_time_format() {
  * @return int                Timezoned time offset
  */
 function yourls_tzp_timezoned_offset($timezone = 'UTC') {
-    if ($timezone === false) {
-        $timezone = 'UTC';
-    }
     $tz = new DateTime('now', new DateTimeZone($timezone));
     return $tz->getOffset()/3600;
 }
@@ -106,8 +103,8 @@ function yourls_tzp_timezoned_timestamp($timestamp = false, $timezone = 'UTC') {
  * @param  string $key   Key
  * @return string        Value of (string)$array[$key], or false
  */
-function yourls_tzp_get_value( $array, $key ) {
-    return isset ( $array[$key] ) ? (string)($array[$key]) : false ;
+function yourls_tzp_get_value( $array, $key, $default ) {
+    return isset ( $array[$key] ) ? (string)($array[$key]) : $default ;
 }
 
 /**
@@ -116,11 +113,11 @@ function yourls_tzp_get_value( $array, $key ) {
  * @param  string $key   Key of timezone option array
  * @return array|mixed   Array of options, or value for specified key if exists (false otherwise)
  */
-function yourls_tzp_read_options( $key = false ) {
+function yourls_tzp_read_options( $key = false, $default = false ) {
     $options = (array)yourls_get_option( 'timezone' );
 
     if( $key !== false ) {
-        $options = array_key_exists($key, $options) ? $options[$key] : false ;
+        $options = array_key_exists($key, $options) ? $options[$key] : $default ;
     }
 
     return $options;

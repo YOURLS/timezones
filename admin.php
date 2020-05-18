@@ -18,11 +18,11 @@ function yourls_tzp_admin_page() {
         $options = (array)yourls_get_option( 'timezone' );
     }
 
-    $user_time_zone          = yourls_tzp_get_value($options,'time_zone');
-    $user_date_format        = yourls_tzp_get_value($options,'date_format');
-    $user_date_format_custom = yourls_tzp_get_value($options,'date_format_custom');
-    $user_time_format        = yourls_tzp_get_value($options,'time_format');
-    $user_time_format_custom = yourls_tzp_get_value($options,'time_format_custom');
+    $user_time_zone          = yourls_tzp_get_value($options, 'time_zone', 'UTC');
+    $user_date_format        = yourls_tzp_get_value($options, 'date_format', 'Y/m/d');
+    $user_date_format_custom = yourls_tzp_get_value($options, 'date_format_custom', 'Y/m/d');
+    $user_time_format        = yourls_tzp_get_value($options, 'time_format', 'H:i');
+    $user_time_format_custom = yourls_tzp_get_value($options, 'time_format_custom', 'H:i');
 
     // Draw page
     yourls_tzp_js_css();
