@@ -78,6 +78,9 @@ function yourls_tzp_get_time_format() {
  * @return int                Timezoned time offset
  */
 function yourls_tzp_timezoned_offset($timezone = 'UTC') {
+    if ($timezone === false) {
+        $timezone = 'UTC';
+    }
     $tz = new DateTime('now', new DateTimeZone($timezone));
     return $tz->getOffset()/3600;
 }
