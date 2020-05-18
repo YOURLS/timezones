@@ -259,11 +259,11 @@ function yourls_tzp_format_radio( $title, $input_name, $formats, $tz, $selected,
 function yourls_tzp_config_update_settings() {
 
     $settings = array(
-        'time_zone'          => yourls_tzp_get_value($_POST, 'time_zone'),
-        'date_format'        => yourls_tzp_get_value($_POST, 'date_format'),
-        'date_format_custom' => yourls_tzp_get_value($_POST, 'date_format_custom_value'),
-        'time_format'        => yourls_tzp_get_value($_POST, 'time_format'),
-        'time_format_custom' => yourls_tzp_get_value($_POST, 'time_format_custom_value'),
+        'time_zone'          => yourls_tzp_get_value($_POST, 'time_zone', 'UTC'),
+        'date_format'        => yourls_tzp_get_value($_POST, 'date_format', 'Y/m/d'),
+        'date_format_custom' => yourls_tzp_get_value($_POST, 'date_format_custom_value', 'Y/m/d'),
+        'time_format'        => yourls_tzp_get_value($_POST, 'time_format', 'H:i'),
+        'time_format_custom' => yourls_tzp_get_value($_POST, 'time_format_custom_value', 'H:i'),
     );
 
     yourls_update_option( 'timezone', $settings );
