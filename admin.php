@@ -19,6 +19,10 @@ function yourls_tzp_admin_page() {
     }
 
     $user_time_zone          = yourls_tzp_get_value($options, 'time_zone', 'UTC');
+    $user_time_zone_display  =  $user_time_zone;
+    if (substr($user_time_zone, 0, 1) == '+' or substr($user_time_zone, 0, 1) == '-') {
+        $user_time_zone_display = 'UTC' . $user_time_zone_display;
+    }
     $user_date_format        = yourls_tzp_get_value($options, 'date_format', 'Y/m/d');
     $user_date_format_custom = yourls_tzp_get_value($options, 'date_format_custom', 'Y/m/d');
     $user_time_format        = yourls_tzp_get_value($options, 'time_format', 'H:i');
@@ -43,7 +47,7 @@ function yourls_tzp_admin_page() {
     yourls_tzp_tz_dropdown( $user_time_zone );
     print '<p>Universal time (<code>UTC</code>) time is: <tt id="utc_time">' . date( 'Y-m-d H:i:s', yourls_tzp_timezoned_timestamp( time(), 'UTC' ) ). '</tt></p>';
     if($user_time_zone) {
-        print "<p>Time in $user_time_zone is: <tt id='local_time'>" . date( 'Y-m-d H:i:s', yourls_tzp_timezoned_timestamp( time(), $user_time_zone) ) . '</tt></p>';
+        print "<p>Time in <code>$user_time_zone_display</code> is: <tt id='local_time'>" . date( 'Y-m-d H:i:s', yourls_tzp_timezoned_timestamp( time(), $user_time_zone) ) . '</tt></p>';
     }
     print '</div>';
 
@@ -184,27 +188,23 @@ function yourls_tzp_tz_dropdown( $user_time_zone ) {
 
     // Manual UTC offset
     $offset_range = array(
-        -12,     -11.5,    -11,     -10.5,    -10,     -9.5,     -9,
-        -8.5,    -8,       -7.5,    -7,       -6.5,    -6,       -5.5,
-        -5,      -4.5,     -4,      -3.5,     -3,      -2.5,     -2,
-        -1.5,    -1,       -0.5,    0,        0.5,     1,        1.5,
-        2,       2.5,      3,       3.5,      4,       4.5,      5,
-        5.5,     5.75,     6,       6.5,      7,       7.5,      8,
-        8.5,     8.75,     9,       9.5,      10,      10.5,     11,
-        11.5,    12,       12.75,   13,       13.75,   14
+        '-12',     '-11:30',   '-11',     '-10:30',   '-10',     '-9.5',    '-9',
+        '-8:30',   '-8',       '-7:30',   '-7',       '-6:30',   '-6',      '-5:30',
+        '-5',      '-4:30',    '-4',      '-3:30',    '-3',      '-2:30',   '-2',
+        '-1:30',   '-1',       '-0:30',   'UTC',        '+0:30',   '+1',      '+1:30',
+        '+2',      '+2:30',    '+3',      '+3:30',    '+4',      '+4:30',   '+5',
+        '+5:30',   '+5:45',    '+6',      '+6:30',    '+7',      '+7:30',   '+8',
+        '+8:30',   '+8:45',    '+9',      '+9:30',    '+10',     '+10:30',  '+11',
+        '+11:30',  '+12',      '+12:45',  '+13',      '+13:45',  '+14'
     );
 
-    foreach( $offset_range as $offset ) {
-        if ( 0 <= $offset ) {
-            $offset_name = '+' . $offset;
-        } else {
-            $offset_name = (string) $offset;
-        }
-
+    foreach( $offset_range as $offset_name ) {
         $offset_value = $offset_name;
         $offset_name  = str_replace( array( '.25', '.5', '.75' ), array( ':15', ':30', ':45' ), $offset_name );
-        $offset_name  = 'UTC' . $offset_name;
-        $offset_value = 'UTC' . $offset_value;
+        if ($offset_name != 'UTC') {
+            $offset_name  = 'UTC' . $offset_name;
+        }
+        // $offset_value = 'UTC' . $offset_value;
         $timezones['UTC'][$offset_value] = $offset_name;
     }
 
