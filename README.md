@@ -1,4 +1,4 @@
-# Timezones
+# Timezones [![Listed in Awesome YOURLS!](https://img.shields.io/badge/Awesome-YOURLS-C5A3BE)](https://github.com/YOURLS/awesome-yourls/)
 
 A plugin to tell YOURLS your time zone and how you'd like times and dates displayed
 
