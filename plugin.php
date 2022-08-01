@@ -3,7 +3,7 @@
 Plugin Name: Time Zones ⏰
 Plugin URI: https://github.com/YOURLS/timezones
 Description: Tell YOURLS what timezone you are in
-Version: 1.0
+Version: 1.3
 Author: YOURLS contributors
 Author URI: https://yourls.org/
 */
