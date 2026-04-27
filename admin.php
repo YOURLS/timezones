@@ -210,13 +210,13 @@ function yourls_tzp_tz_dropdown( $user_time_zone ) {
     }
 
     print '<select name="time_zone" id="time_zone">';
-    print '<option value="" dzisabled="dzisabled">Choose a time zone</option>';
+    print '<option value="" disabled="disabled">Choose a time zone</option>';
     foreach($timezones as $region => $list) {
         print '<optgroup label="' . $region . '">' . "\n";
         foreach($list as $timezone => $name) {
             print '<option value="' . $timezone . '" ' . (($timezone == $user_time_zone) ? "selected='selected'":"") . '>' . "$region/$name" . '</option>' . "\n";
         }
-        print '<optgroup>' . "\n";
+        print '</optgroup>' . "\n";
     }
     print '</select>';
 }
@@ -245,8 +245,8 @@ function yourls_tzp_format_radio( $title, $input_name, $formats, $tz, $selected,
 
     $checked = ( 'custom' === $selected ) ? 'checked="checked"' : '' ;
     $preview = date( $custom, yourls_tzp_timezoned_timestamp( time(), $tz ) );
-    print "<label class='custom'><input type='radio' id='${input_name}_custom' name='$input_name' value='custom' $checked >
-           Custom: <input type='text' class='text custom_format' id='${input_name}_custom_value' name='${input_name}_custom_value' value='$custom' />
+    print "<label class='custom'><input type='radio' id='{$input_name}_custom' name='$input_name' value='custom' $checked >
+           Custom: <input type='text' class='text custom_format' id='{$input_name}_custom_value' name='{$input_name}_custom_value' value='$custom' />
            <span class='tz_test' id='tz_test_$input_name'>$preview</span>
            </label>\n";
 
