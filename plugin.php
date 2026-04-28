@@ -3,7 +3,7 @@
 Plugin Name: Time Zones ⏰
 Plugin URI: https://github.com/YOURLS/timezones
 Description: Tell YOURLS what timezone you are in
-Version: 1.3
+Version: 1.3.1
 Author: YOURLS contributors
 Author URI: https://yourls.org/
 */
@@ -78,7 +78,12 @@ function yourls_tzp_get_time_format() {
  * @return int                Timezoned time offset
  */
 function yourls_tzp_timezoned_offset($timezone = 'UTC') {
-    $tz = new DateTime('now', new DateTimeZone($timezone));
+	try {
+	    $tz = new DateTime('now', new DateTimeZone($timezone));
+	} catch (Exception $e) {
+	    // $timezone is invalid, fallback or error handling
+	    $tz = new DateTime('now');
+	}
     return $tz->getOffset()/3600;
 }
 
